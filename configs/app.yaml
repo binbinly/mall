@@ -1,0 +1,19 @@
+#Env: local
+#Name: gin-app
+#DfsUrl: http://127.0.0.1:9050/group1/
+#Mode: debug      # debug, release, test
+#LogLevel: debug  # debug, info, warn, error, fatal
+#LogDir: ./logs/
+#JwtSecret:
+#JwtTimeout: 86400
+#Debug: true
+#
+#HTTP:
+#  Addr: :9100
+#  ReadTimeout: 5s
+#  WriteTimeout: 5s
+#
+#Websocket:
+#  Addr: :9200
+#  ReadTimeout: 5s
+#  WriteTimeout: 5s
