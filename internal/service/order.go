@@ -9,7 +9,6 @@ import (
 
 	"github.com/binbinly/pkg/logger"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // OrderSubmit 购物车提交订单
@@ -58,15 +57,15 @@ func (s *Service) SubmitSkuOrder(ctx context.Context, uid, skuID, addressID, cou
 
 	total := sku.Price * num
 	items := []*model.OmsOrderItem{
-		buildOrderItem(sku.Sku.Id, int(sku.Sku.Price), num, sku.Sku.Title, sku.Sku.Cover, sku.Sku.AttrValue),
+		buildOrderItem(sku.ID, sku.Price, num, sku.Name, sku.Cover, sku.AttrValue),
 	}
 
-	order, err := l.buildOrder(ctx, addressID, uid, couponID, total, note, "")
+	order, err := s.buildOrder(ctx, addressID, uid, couponID, total, note, "")
 	if err != nil {
 		return err
 	}
 
-	if err = l.orderSubmit(ctx, order, items); err != nil {
+	if err = s.orderSubmit(ctx, order, items); err != nil {
 		return err
 	}
 
@@ -76,22 +75,22 @@ func (s *Service) SubmitSkuOrder(ctx context.Context, uid, skuID, addressID, cou
 // SubmitKillOrder 秒杀订单提交
 func (s *Service) SubmitKillOrder(ctx context.Context, memberID, skuID, addressID int, price, num int, orderNo string) error {
 	// 产品服务获取sku信息
-	sku, err := l.productService.GetSkuByID(ctx, &cpb.SkuIDReq{Id: skuID})
+	sku, err := s.GetSkuByID(ctx, skuID)
 	if err != nil {
 		return err
 	}
 
 	total := price * num
-	items := []*model.OrderItemModel{
-		buildOrderItem(sku.Sku.Id, price, num, sku.Sku.Title, sku.Sku.Cover, sku.Sku.AttrValue),
+	items := []*model.OmsOrderItem{
+		buildOrderItem(sku.ID, price, num, sku.Name, sku.Cover, sku.AttrValue),
 	}
 
-	order, err := l.buildOrder(ctx, addressID, memberID, 0, total, "", orderNo)
+	order, err := s.buildOrder(ctx, addressID, memberID, 0, total, "", orderNo)
 	if err != nil {
 		return err
 	}
 
-	if err = l.orderSubmit(ctx, order, items); err != nil {
+	if err = s.orderSubmit(ctx, order, items); err != nil {
 		return err
 	}
 
@@ -131,7 +130,7 @@ func (s *Service) OrderCancel(ctx context.Context, mid, id int) error {
 }
 
 // MyOrderList 订单列表
-func (s *Service) MyOrderList(ctx context.Context, mid int, status int, page int) ([]*model.OrderModel, error) {
+func (s *Service) MyOrderList(ctx context.Context, mid int, status int, page int) ([]*model.OmsOrder, error) {
 	return s.repo.GetOrderList(ctx, mid, status, app.GetPageOffset(page), app.DefaultLimit)
 }
 
@@ -146,15 +145,15 @@ func (s *Service) OrderPayNotify(ctx context.Context, mid int, amount int, pType
 	}
 
 	// 营销服务获取支付配置
-	pays, err := l.marketService.GetPayConfig(ctx, &emptypb.Empty{})
+	pays, err := s.GetPayConfig(ctx)
 	if err != nil {
 		return err
 	}
 
 	// 获取当前支付的以太坊合约地址
 	var address string
-	for _, pay := range pays.Data {
-		if pay.Id == int32(pType) {
+	for _, pay := range pays {
+		if pay.ID == pType {
 			address = pay.Address
 		}
 	}
@@ -163,11 +162,7 @@ func (s *Service) OrderPayNotify(ctx context.Context, mid int, amount int, pType
 	}
 
 	// 第三方服务中检查 当前订单号是否已支付
-	if _, err = l.thirdService.CheckETHPay(ctx, &core.ETHPayReq{
-		Id:      pType,
-		Address: address,
-		OrderNo: orderNo,
-	}); err != nil {
+	if err = s.CheckPay(ctx, order.ID, address, orderNo); err != nil {
 		return err
 	}
 

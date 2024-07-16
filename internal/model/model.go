@@ -1,9 +1,11 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/binbinly/pkg/auth"
 	"gorm.io/gorm"
+	"time"
 )
 
 const (
@@ -99,12 +101,19 @@ const (
 	CouponGetTypeDraw = 1
 )
 
+const (
+	// ConfigKeyHomeCat 首页分类键
+	ConfigKeyHomeCat = "app_home_cat"
+	// ConfigKeyPayList 支付配置
+	ConfigKeyPayList = "app_pay_list"
+)
+
 var ErrRecordNotModified = errors.New("record not modified")
 
 // Attrs 规格属性结构
 type Attrs struct {
-	GroupID   int64  `json:"group_id"`
-	AttrID    int64  `json:"attr_id"`
+	GroupID   int    `json:"group_id"`
+	AttrID    int    `json:"attr_id"`
 	AttrName  string `json:"attr_name"`
 	AttrValue string `json:"attr_value"`
 }
@@ -124,14 +133,40 @@ type WareSkuStock struct {
 }
 
 type Coupon struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Amount   int    `json:"amount"`
-	MinPoint int    `json:"min_point"`
-	StartAt  int64  `json:"start_at"`
-	EndAt    int64  `json:"end_at"`
-	Note     string `json:"note"`
-	Status   int    `json:"status"`
+	ID       int       `json:"id"`
+	Name     string    `json:"name"`
+	Amount   int       `json:"amount"`
+	MinPoint int       `json:"min_point"`
+	StartAt  time.Time `json:"start_at"`
+	EndAt    time.Time `json:"end_at"`
+	Note     string    `json:"note"`
+	Status   int       `json:"status"`
+}
+
+// Config 对外配置结构
+type Config struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// AppSetting 对外页面配置数据结构
+type AppSetting struct {
+	Type int8            `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+// ConfigHomeCat 首页分类配置
+type ConfigHomeCat struct {
+	ID   int           `json:"id"`
+	Name string        `json:"name"`
+	List []*AppSetting `json:"list"`
+}
+
+// ConfigPayList 支付配置
+type ConfigPayList struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
 }
 
 // Compare with the plain text password. Returns true if it's the same as the encrypted one (in the `User` struct).

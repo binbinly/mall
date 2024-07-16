@@ -42,8 +42,8 @@ func (s *Service) CouponDraw(ctx context.Context, memberID, id int) error {
 	if err != nil {
 		return errors.Wrapf(err, "[service.coupon] find id: %v", id)
 	}
-	now := time.Now().Unix()
-	if coupon == nil || coupon.ID == 0 || coupon.StartAt > now || coupon.EndAt < now {
+	now := time.Now()
+	if coupon == nil || coupon.ID == 0 || now.Before(coupon.EndAt) || now.After(coupon.StartAt) {
 		return ErrCouponNotFound
 	}
 	exist, err := s.repo.CheckReceived(ctx, memberID, id)
@@ -63,12 +63,12 @@ func (s *Service) CouponDraw(ctx context.Context, memberID, id int) error {
 		return ErrCouponFinished
 	}
 	couponMember := &model.SmsCouponMember{
-		MID:      dbs.MID{MemberID: memberID},
+		MemberID: memberID,
 		CouponID: id,
 		GetType:  model.CouponGetTypeDraw,
 		Status:   model.CouponStatusInit,
 	}
-	err = l.repo.CouponUserSave(ctx, couponMember)
+	err = s.repo.CouponUserSave(ctx, couponMember)
 	if err != nil {
 		return errors.Wrapf(err, "[service.coupon] save")
 	}
@@ -77,16 +77,16 @@ func (s *Service) CouponDraw(ctx context.Context, memberID, id int) error {
 
 // CouponUsed 使用优惠券
 func (s *Service) CouponUsed(ctx context.Context, memberID, id, orderID int) error {
-	mCoupon, err := l.repo.GetCouponMemberByID(ctx, id)
+	mCoupon, err := s.repo.GetCouponMemberByID(ctx, id)
 	if err != nil {
 		return errors.Wrapf(err, "[service.coupon] get coupon user by id: %v", id)
 	}
 	if mCoupon.ID == 0 || mCoupon.MemberID != memberID || mCoupon.Status != model.CouponStatusInit {
-		return errno.ErrCouponNotFound
+		return ErrCouponNotFound
 	}
-	err = l.repo.SetCouponMemberUsed(ctx, id, memberID, orderID)
-	if errors.Is(err, dbs.ErrRecordNotModified) {
-		return errno.ErrCouponNotFound
+	err = s.repo.SetCouponMemberUsed(ctx, id, memberID, orderID)
+	if errors.Is(err, model.ErrRecordNotModified) {
+		return ErrCouponNotFound
 	} else if err != nil {
 		return errors.Wrapf(err, "[service.coupon] set used id: %v uid: %v, oid: %v", id, memberID, orderID)
 	}
